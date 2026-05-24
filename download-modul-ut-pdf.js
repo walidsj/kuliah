@@ -281,7 +281,7 @@
   function createStatusPanel(root, concurrency) {
     const panel = document.createElement("div");
     panel.id = "rmv-download-console";
-    panel.className = "fixed bottom-16 left-3 right-3 z-[9999] max-h-[calc(100vh-2rem)] w-auto overflow-auto rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-90 p-3 font-sans text-sm leading-5 text-white shadow-2xl sm:left-auto sm:right-4 sm:w-80";
+    panel.className = "fixed bottom-20 left-3 right-3 z-[9999] max-h-[calc(100vh-2rem)] w-auto overflow-auto rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-90 p-3 font-sans text-sm leading-5 text-white shadow-2xl sm:left-auto sm:right-4 sm:w-80";
     panel.dataset.mode = "probing";
     panel.innerHTML = `
       <div class="mb-3 flex items-start justify-between gap-3">
@@ -289,7 +289,6 @@
           <span id="rmv-status-icon" class="text-blue-200">${getUiIcon("loading")}</span>
           <strong id="rmv-status" class="rmv-status-line truncate text-sm font-semibold">Memuat...</strong>
         </div>
-        <span id="rmv-spinner" class="rmv-spinner mt-0.5 inline-block h-3.5 w-3.5 min-w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
       </div>
       <div id="rmv-processing-details" class="hidden">
         <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-gray-300"><span>Diproses</span><span id="rmv-fetched" class="font-semibold text-white">0</span></div>
@@ -308,7 +307,6 @@
 
     const elements = {
       status: panel.querySelector("#rmv-status"),
-      spinner: panel.querySelector("#rmv-spinner"),
       statusIcon: panel.querySelector("#rmv-status-icon"),
       fetched: panel.querySelector("#rmv-fetched"),
       last: panel.querySelector("#rmv-last"),
@@ -323,8 +321,7 @@
         elements.statusIcon.className = "text-blue-200";
         panel.querySelector("#rmv-processing-details").classList.add("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
-        elements.status.textContent = "Memuat...";
-        elements.spinner.classList.remove("hidden");
+        elements.status.textContent = "Memuat..."; 
       },
       setProcessing(progress, fetchedPages, lastKnownPage) {
         panel.dataset.mode = "processing";
@@ -333,7 +330,6 @@
         elements.status.textContent = "Memproses";
         panel.querySelector("#rmv-processing-details").classList.remove("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
-        elements.spinner.classList.add("hidden");
         elements.fetched.textContent = String(fetchedPages);
         elements.last.textContent = String(lastKnownPage);
         elements.bar.style.width = `${Math.round(progress * 100)}%`;
@@ -345,14 +341,12 @@
         elements.status.textContent = "Memproses";
         panel.querySelector("#rmv-processing-details").classList.remove("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
-        elements.spinner.classList.add("hidden");
         elements.last.textContent = String(lastKnownPage);
       },
       setCancelled() {
         panel.dataset.mode = "idle";
         panel.querySelector("#rmv-processing-details").classList.add("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
-        elements.spinner.classList.add("hidden");
         elements.statusIcon.innerHTML = getUiIcon("x");
         elements.statusIcon.className = "text-red-300";
         elements.status.textContent = "Dibatalkan";
@@ -361,7 +355,6 @@
         panel.dataset.mode = "done";
         panel.querySelector("#rmv-processing-details").classList.add("hidden");
         panel.querySelector("#rmv-complete-details").classList.remove("hidden");
-        elements.spinner.classList.add("hidden");
         elements.statusIcon.innerHTML = getUiIcon("check");
         elements.statusIcon.className = "text-green-200";
         elements.status.textContent = "Selesai";
