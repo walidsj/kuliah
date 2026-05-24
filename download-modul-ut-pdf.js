@@ -113,9 +113,19 @@
 
   function updateUI() {
     elFetched.textContent = String(fetchedCount);
-    elLast.textContent = String(Math.max(startPage, nextPage - 1));
-    // progress fraction = fetched / assigned (nextPage-startPage)
-    const assigned = Math.max(1, nextPage - startPage);
+    // If we detected lastPage, show it; otherwise show the last probed page
+    if (lastPage !== undefined && lastPage !== null) {
+      elLast.textContent = String(lastPage);
+    } else {
+      elLast.textContent = String(Math.max(startPage, nextPage - 1));
+    }
+    // progress fraction = fetched / assigned
+    let assigned;
+    if (lastPage !== undefined && lastPage !== null) {
+      assigned = Math.max(1, lastPage - startPage + 1);
+    } else {
+      assigned = Math.max(1, nextPage - startPage);
+    }
     const frac = Math.min(1, fetchedCount / assigned);
     elBar.style.width = `${Math.round(frac * 100)}%`;
     elStatus.textContent = cancelled ? 'Cancelled' : (finished ? 'Completed' : 'Running');
@@ -123,6 +133,67 @@
 
   updateUI();
   // --- end UI ---
+
+  // --- Detect last page using exponential + binary search probing ---
+  async function probePage(p) {
+    try {
+      const ctl = new AbortController();
+      const res = await fetch(generateUri(doc, subfolder, p), { signal: ctl.signal });
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image") || blob.size < 5000) return false;
+      // quick dimension check
+      const bitmap = await createImageBitmap(blob);
+      if (bitmap.width < 200 || bitmap.height < 200) return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function findLastPage(startAt) {
+    // If start page itself is invalid, return startAt - 1
+    if (!(await probePage(startAt))) return startAt - 1;
+
+    // exponential search to find an upper bound
+    let lo = startAt;
+    let hi = startAt + 1;
+    while (await probePage(hi)) {
+      lo = hi;
+      hi = hi * 2; // exponential growth
+      // cap hi to avoid runaway (e.g., 10000 pages)
+      if (hi > startAt + 10000) {
+        hi = startAt + 10000;
+        break;
+      }
+    }
+
+    // binary search between lo (valid) and hi (invalid)
+    let left = lo;
+    let right = hi;
+    while (left + 1 < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (await probePage(mid)) left = mid; else right = mid;
+    }
+    return left;
+  }
+
+  // start detection and update UI
+  elStatus.textContent = 'Probing...';
+  let detectedLast = null;
+  try {
+    detectedLast = await findLastPage(startPage);
+  } catch (e) {
+    detectedLast = null;
+  }
+  if (detectedLast === null || detectedLast < startPage) {
+    elLast.textContent = '-';
+  } else {
+    elLast.textContent = String(detectedLast);
+  }
+  // expose lastPage for workers; if unknown, keep null to let workers detect via invalid fetch
+  const lastPage = (detectedLast >= startPage) ? detectedLast : null;
+  updateUI();
+  // --- end detection ---
 
   async function fetchAndProcess(p) {
     const url = generateUri(doc, subfolder, p);
@@ -154,6 +225,9 @@
     (async () => {
       while (!finished) {
         const p = nextPage++;
+        if (lastPage !== null && p > lastPage) {
+          break;
+        }
         try {
           const r = await fetchAndProcess(p);
           if (!r.valid) {
