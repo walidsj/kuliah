@@ -15,7 +15,7 @@
   let settings;
   try {
     settings = await askForDownloadSettings(body, {
-      defaultFileName: buildDefaultFileName(subfolder, doc),
+      defaultFileName: buildDefaultFileName(body, subfolder, doc),
       defaultStartPage: 1,
       defaultConcurrency,
       defaultOrientation,
@@ -64,10 +64,21 @@
 
   return "PDF selesai dibuat";
 
-  function buildDefaultFileName(subfolderName, docName) {
+  function buildDefaultFileName(root, subfolderName, docName) {
+    const pageTitle = getNavTitle(root);
+
+    if (pageTitle) {
+      return sanitizeName(pageTitle);
+    }
+
     const folder = sanitizeName(subfolderName);
     const documentName = sanitizeName(docName);
     return `${folder}-${documentName}`;
+  }
+
+  function getNavTitle(root) {
+    const navTitle = root.querySelector(".nav-title");
+    return navTitle?.getAttribute("title")?.trim() || "";
   }
 
   function sanitizeName(value) {
