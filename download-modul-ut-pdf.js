@@ -8,10 +8,11 @@
   let doc = params.get("doc");
   let subfolder = params.get("subfolder");
 
-  let namaPdf = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + subfolder + "-" + doc + "):") || `${subfolder}-${doc}`;
+  let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + subfolder + "-" + doc + "):") || generateFileName(subfolder, doc);
 
   let i = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
 
+ 
   function generateUri(docName, subfolderName, pageNumber) {
     if (!docName || !subfolderName) {
       throw new Error("Missing doc or subfolder parameter");
@@ -24,6 +25,16 @@
 
     return `https://pustaka.ut.ac.id/reader/services/view.php?doc=${d}&format=jpg&subfolder=${sf}/&page=${pageNumber}`;
   }
+
+  function generateFileName(subfolderName, docName) {
+    let sf = subfolderName.replace(/\/$/, "");
+    sf = sf.replace(/\.[^/.]+$/, "");
+
+    let d = docName.replace(/\.[^/.]+$/, "");
+
+    return `${sf}-${d}`;
+  }
+
 
   function blobToDataURL(blob) {
     return new Promise((resolve) => {
@@ -97,7 +108,7 @@
     }
   }
 
-  const filename = `${namaPdf}.pdf`.replace(/[\/\\:*?"<>|]/g, "-");
+  const filename = `${pdfFileName}`.replace(/[\/\\:*?"<>|]/g, "-");
 
   pdf.save(filename);
 
