@@ -15,7 +15,7 @@ await import(
 
 ```
 await import(
-  "https://walidsj.github.io/kuliah/download-modul-ut.js?v=" + Date.now()
+  "https://walidsj.github.io/kuliah/download-modul-ut-pdf.js?v=" + Date.now()
 );
 ```
 
