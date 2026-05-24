@@ -1,0 +1,2 @@
+# kuliah
+Script untuk Kuliah
