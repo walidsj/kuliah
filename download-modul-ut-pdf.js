@@ -330,8 +330,7 @@
       </div>
       <div id="rmv-complete-details" class="hidden text-base font-bold tracking-tight">
         <div class="flex items-center gap-2 text-green-100">
-          <span>${getUiIcon("check")}</span>
-          <span>Total halaman: <span id="rmv-pages-done">0</span></span>
+           <span>Total halaman: <span id="rmv-pages-done">0</span></span>
         </div>
       </div>
     `;
