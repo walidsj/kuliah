@@ -12,6 +12,7 @@
 
   const body = await waitForBody();
   await ensureTailwindStylesheet();
+  const detectedTotalPages = getTotalPagesFromFlowpaper(body);
   let settings;
   try {
     settings = await askForDownloadSettings(body, {
@@ -20,6 +21,7 @@
       defaultConcurrency,
       defaultOrientation,
       defaultPaperSize,
+      defaultTotalPages: detectedTotalPages,
     });
   } catch {
     return "Pengaturan unduhan dibatalkan";
@@ -38,7 +40,9 @@
   window.addEventListener("beforeunload", download.cancel, { once: true });
   window.addEventListener("pagehide", download.cancel, { once: true });
 
-  const lastPage = await detectLastPage(settings.startPage, download.signal, ui);
+  const lastPage = settings.totalPages !== null
+    ? settings.totalPages
+    : await detectLastPage(settings.startPage, download.signal, ui);
   ui.setProbingComplete(lastPage);
 
   const pages = await fetchPagesToPdf({
@@ -139,6 +143,10 @@
               <input class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" />
             </label>
           </div>
+          <label class="grid gap-2 text-sm font-medium text-gray-200">
+            <span>Total halaman</span>
+            <input class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="totalPages" type="number" min="1" value="${defaults.defaultTotalPages ?? ""}" placeholder="Otomatis dari FlowPaper" />
+          </label>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="grid gap-2 text-sm font-medium text-gray-200">
               <span>Orientasi</span>
@@ -183,11 +191,12 @@
         const pdfFileName = String(formData.get("pdfFileName") || defaults.defaultFileName).trim() || defaults.defaultFileName;
         const startPage = Math.max(1, parseInt(String(formData.get("startPage") || defaults.defaultStartPage), 10) || defaults.defaultStartPage);
         const concurrency = Math.max(1, parseInt(String(formData.get("concurrency") || defaults.defaultConcurrency), 10) || defaults.defaultConcurrency);
+        const totalPages = parseTotalPages(formData.get("totalPages"), defaults.defaultTotalPages);
         const orientation = String(formData.get("orientation") || defaults.defaultOrientation).toLowerCase() === "landscape" ? "landscape" : "portrait";
         const paperSize = normalizePaperSize(formData.get("paperSize") || defaults.defaultPaperSize);
 
         cleanup();
-        resolve({ pdfFileName, startPage, concurrency, orientation, paperSize });
+        resolve({ pdfFileName, startPage, concurrency, totalPages, orientation, paperSize });
       });
 
       overlay.appendChild(modal);
@@ -212,6 +221,29 @@
     const allowed = new Set(["a4", "letter", "legal", "a5"]);
     const normalized = String(value || "a4").toLowerCase();
     return allowed.has(normalized) ? normalized : "a4";
+  }
+
+  function parseTotalPages(value, fallback) {
+    const parsed = parseInt(String(value ?? "").trim(), 10);
+
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+
+    return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
+  }
+
+  function getTotalPagesFromFlowpaper(root) {
+    const totalPagesLabel = root.querySelector(".flowpaper_lblTotalPages.flowpaper_tblabel.flowpaper_numberOfPages");
+    const text = totalPagesLabel?.textContent || "";
+    const match = text.match(/\/\s*(\d+)/);
+
+    if (!match) {
+      return null;
+    }
+
+    const totalPages = parseInt(match[1], 10);
+    return Number.isFinite(totalPages) && totalPages > 0 ? totalPages : null;
   }
 
   function getUiIcon(name) {
