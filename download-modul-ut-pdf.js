@@ -8,7 +8,7 @@
   let doc = params.get("doc");
   let subfolder = params.get("subfolder");
 
-  let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + subfolder + "-" + doc + "):") || generateFileName(subfolder, doc);
+  let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + generateFileName(subfolder, doc) + "):") || generateFileName(subfolder, doc);
 
   let i = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
   let cancelled = false;
