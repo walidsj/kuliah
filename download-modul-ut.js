@@ -68,9 +68,10 @@
 
         img.src = URL.createObjectURL(blob);
       })
-      .catch(() => {
+      .catch((err) => {
         console.log("Stop di halaman", i);
         console.log("Halaman terakhir:", i - 1);
+        throw new Error(err);
         alert(`Download selesai. Halaman terakhir: ${i - 1}`);
       });
   }
