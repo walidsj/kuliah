@@ -8,21 +8,15 @@
   let doc = params.get("doc");
   let subfolder = params.get("subfolder");
 
-  let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + generateFileName(subfolder, doc) + "):") || generateFileName(subfolder, doc);
+  function generateFileName(subfolderName, docName) {
+    let sf = (subfolderName || "").replace(/\/$/, "");
+    sf = sf.replace(/\.[^/.]+$/, "");
 
-  let i = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
-  let cancelled = false;
-  const abortController = new AbortController();
+    let d = (docName || "").replace(/\.[^/.]+$/, "");
 
-  const cancelDownload = () => {
-    cancelled = true;
-    abortController.abort();
-  };
+    return `${sf}-${d}`;
+  }
 
-  window.addEventListener("beforeunload", cancelDownload, { once: true });
-  window.addEventListener("pagehide", cancelDownload, { once: true });
-
- 
   function generateUri(docName, subfolderName, pageNumber) {
     if (!docName || !subfolderName) {
       throw new Error("Missing doc or subfolder parameter");
@@ -36,32 +30,19 @@
     return `https://pustaka.ut.ac.id/reader/services/view.php?doc=${d}&format=jpg&subfolder=${sf}/&page=${pageNumber}`;
   }
 
-  function generateFileName(subfolderName, docName) {
-    let sf = subfolderName.replace(/\/$/, "");
-    sf = sf.replace(/\.[^/.]+$/, "");
+  let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + generateFileName(subfolder, doc) + "):") || generateFileName(subfolder, doc);
+  let startPage = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
 
-    let d = docName.replace(/\.[^/.]+$/, "");
+  let cancelled = false;
+  const abortController = new AbortController();
 
-    return `${sf}-${d}`;
-  }
+  const cancelDownload = () => {
+    cancelled = true;
+    abortController.abort();
+  };
 
-
-  function blobToDataURL(blob) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  function loadImage(src) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = src;
-    });
-  }
+  window.addEventListener("beforeunload", cancelDownload, { once: true });
+  window.addEventListener("pagehide", cancelDownload, { once: true });
 
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -70,66 +51,132 @@
   });
 
   let firstPage = true;
-  // Faster: fetch pages in batches (limited concurrency) and process with createImageBitmap
-  const CONCURRENCY = 4;
-  let pageCursor = i;
-  const images = []; // {p, dataUrl, width, height}
 
-  console.log(`Start download from page ${i} with concurrency=${CONCURRENCY}`);
+  // Worker-pool concurrency so logs appear as each page completes
+  const CONCURRENCY = 6;
+  let nextPage = startPage;
+  let finished = false;
+  const images = []; // collected {p, dataUrl, width, height}
 
-  outer: while (true) {
-    const batch = Array.from({ length: CONCURRENCY }, (_, k) => pageCursor + k);
-    console.log(`Fetching pages ${batch[0]}..${batch[batch.length - 1]}`);
+  console.log(`Start download from page ${startPage} with concurrency=${CONCURRENCY}`);
 
-    const promises = batch.map(async (p) => {
-      const url = generateUri(doc, subfolder, p);
-      const res = await fetch(url, { signal: abortController.signal });
-      const blob = await res.blob();
+  // --- Floating console UI ---
+  const ui = document.createElement("div");
+  ui.id = "rmv-download-console";
+  ui.style.position = "fixed";
+  ui.style.right = "12px";
+  ui.style.top = "12px";
+  ui.style.width = "300px";
+  ui.style.background = "rgba(0,0,0,0.8)";
+  ui.style.color = "#fff";
+  ui.style.padding = "10px";
+  ui.style.fontFamily = "Arial, sans-serif";
+  ui.style.fontSize = "13px";
+  ui.style.borderRadius = "8px";
+  ui.style.zIndex = 999999;
+  ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+  ui.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <strong id="rmv-status">Starting...</strong>
+      <button id="rmv-cancel" style="background:#c0392b;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer">Cancel</button>
+    </div>
+    <div style="margin-bottom:6px;">Fetched: <span id="rmv-fetched">0</span></div>
+    <div style="margin-bottom:6px;">Last page: <span id="rmv-last">-</span></div>
+    <div style="height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div id="rmv-bar" style="height:100%;width:0%;background:#2ecc71"></div></div>
+    <div style="font-size:11px;opacity:0.85">Workers: <span id="rmv-workers">${CONCURRENCY}</span></div>
+  `;
+  document.body.appendChild(ui);
 
-      if (!blob.type.startsWith("image") || blob.size < 5000) {
-        console.log(`Page ${p} is not a valid image or too small.`);
-        return { p, valid: false };
-      }
+  const elStatus = ui.querySelector('#rmv-status');
+  const elFetched = ui.querySelector('#rmv-fetched');
+  const elLast = ui.querySelector('#rmv-last');
+  const elBar = ui.querySelector('#rmv-bar');
+  const btnCancel = ui.querySelector('#rmv-cancel');
 
-      const bitmap = await createImageBitmap(blob);
-      if (bitmap.width < 200 || bitmap.height < 200) {
-        console.log(`Page ${p} image dimensions too small: ${bitmap.width}x${bitmap.height}`);
-        return { p, valid: false };
-      }
+  btnCancel.addEventListener('click', () => {
+    cancelDownload();
+    elStatus.textContent = 'Cancelling...';
+  });
 
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, 0, 0);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  let fetchedCount = 0;
 
-      return { p, valid: true, dataUrl, width: bitmap.width, height: bitmap.height };
-    });
+  function updateUI() {
+    elFetched.textContent = String(fetchedCount);
+    elLast.textContent = String(Math.max(startPage, nextPage - 1));
+    // progress fraction = fetched / assigned (nextPage-startPage)
+    const assigned = Math.max(1, nextPage - startPage);
+    const frac = Math.min(1, fetchedCount / assigned);
+    elBar.style.width = `${Math.round(frac * 100)}%`;
+    elStatus.textContent = cancelled ? 'Cancelled' : (finished ? 'Completed' : 'Running');
+  }
 
-    let results;
-    try {
-      results = await Promise.all(promises);
-    } catch (err) {
-      if (cancelled || err.name === "AbortError") {
-        alert("Download dibatalkan sebelum selesai.");
-        return "Download cancelled";
-      }
+  updateUI();
+  // --- end UI ---
 
-      alert(`Gagal memproses halaman ${pageCursor}. ${err?.message || err}`);
-      break;
+  async function fetchAndProcess(p) {
+    const url = generateUri(doc, subfolder, p);
+    const res = await fetch(url, { signal: abortController.signal });
+    const blob = await res.blob();
+
+    if (!blob.type.startsWith("image") || blob.size < 5000) {
+      console.log(`Page ${p} is not a valid image or too small.`);
+      return { p, valid: false };
     }
 
-    for (const r of results) {
-      if (!r.valid) {
-        console.log(`No more pages after ${r.p - 1}`);
-        break outer; // stop when a page signals end
-      }
-      images.push(r);
-      console.log(`Fetched page ${r.p} (queued ${images.length})`);
+    const bitmap = await createImageBitmap(blob);
+    if (bitmap.width < 200 || bitmap.height < 200) {
+      console.log(`Page ${p} image dimensions too small: ${bitmap.width}x${bitmap.height}`);
+      return { p, valid: false };
     }
 
-    pageCursor += CONCURRENCY;
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+    return { p, valid: true, dataUrl, width: bitmap.width, height: bitmap.height };
+  }
+
+  const workers = Array.from({ length: CONCURRENCY }, () =>
+    (async () => {
+      while (!finished) {
+        const p = nextPage++;
+        try {
+          const r = await fetchAndProcess(p);
+          if (!r.valid) {
+            finished = true;
+            break;
+          }
+          images.push(r);
+          fetchedCount++;
+          console.log(`Fetched page ${r.p} (queued ${images.length})`);
+          updateUI();
+        } catch (err) {
+          if (cancelled || err.name === "AbortError") {
+            alert("Download dibatalkan sebelum selesai.");
+            finished = true;
+            break;
+          }
+          alert(`Gagal memproses halaman ${p}. ${err?.message || err}`);
+          finished = true;
+          break;
+        }
+      }
+    })()
+  );
+
+  await Promise.all(workers);
+
+  // mark finished and update UI
+  finished = true;
+  updateUI();
+  btnCancel.disabled = true;
+
+  if (cancelled || abortController.signal.aborted) {
+    alert("PDF tidak disimpan karena proses dibatalkan.");
+    return "Download cancelled";
   }
 
   // Add images to PDF in order
@@ -151,15 +198,11 @@
     firstPage = false;
   }
 
-  if (cancelled || abortController.signal.aborted) {
-    alert("PDF tidak disimpan karena proses dibatalkan.");
-    return "Download cancelled";
-  }
- 
+  const filename = `${pdfFileName}`.replace(/[\/\\:*?"<>|]/g, "-");
 
-  pdf.save(pdfFileName);
+  pdf.save(filename);
 
-  console.log("PDF selesai:", pdfFileName);
+  console.log("PDF selesai:", filename);
 
   return "PDF generated";
 })();
