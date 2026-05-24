@@ -281,7 +281,7 @@
   function createStatusPanel(root, concurrency) {
     const panel = document.createElement("div");
     panel.id = "rmv-download-console";
-    panel.className = "fixed bottom-4 left-3 right-3 z-[9999] max-h-[calc(100vh-2rem)] w-auto overflow-auto rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-90 p-3 font-sans text-sm leading-5 text-white shadow-2xl sm:left-auto sm:right-4 sm:w-80";
+    panel.className = "fixed bottom-16 left-3 right-3 z-[9999] max-h-[calc(100vh-2rem)] w-auto overflow-auto rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-90 p-3 font-sans text-sm leading-5 text-white shadow-2xl sm:left-auto sm:right-4 sm:w-80";
     panel.dataset.mode = "probing";
     panel.innerHTML = `
       <div class="mb-3 flex items-start justify-between gap-3">
