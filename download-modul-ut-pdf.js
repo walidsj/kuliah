@@ -7,6 +7,8 @@
   const doc = params.get("doc");
   const subfolder = params.get("subfolder");
   const defaultConcurrency = 10;
+  const defaultOrientation = "portrait";
+  const defaultPaperSize = "a4";
 
   const body = await waitForBody();
   let settings;
@@ -15,13 +17,19 @@
       defaultFileName: buildDefaultFileName(subfolder, doc),
       defaultStartPage: 1,
       defaultConcurrency,
+      defaultOrientation,
+      defaultPaperSize,
     });
   } catch {
     return "Pengaturan unduhan dibatalkan";
   }
 
   const download = createDownloadState();
-  const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "a4" });
+  const pdf = new jsPDF({
+    orientation: settings.orientation,
+    unit: "px",
+    format: settings.paperSize,
+  });
   const ui = createStatusPanel(body, settings.concurrency);
 
   console.log(`Mulai unduh dari halaman ${settings.startPage} dengan concurrency=${settings.concurrency}`);
@@ -72,45 +80,47 @@
   function askForDownloadSettings(root, defaults) {
     return new Promise((resolve, reject) => {
       const overlay = document.createElement("div");
-      overlay.style.position = "fixed";
-      overlay.style.inset = "0";
-      overlay.style.background = "rgba(0,0,0,0.72)";
-      overlay.style.display = "flex";
-      overlay.style.alignItems = "center";
-      overlay.style.justifyContent = "center";
-      overlay.style.zIndex = "1000000";
-      overlay.style.padding = "16px";
+      overlay.className = "rmv-settings-overlay";
 
       const modal = document.createElement("div");
-      modal.style.width = "100%";
-      modal.style.maxWidth = "420px";
-      modal.style.background = "#111827";
-      modal.style.color = "#fff";
-      modal.style.border = "1px solid rgba(255,255,255,0.08)";
-      modal.style.borderRadius = "16px";
-      modal.style.boxShadow = "0 24px 80px rgba(0,0,0,0.45)";
-      modal.style.padding = "20px";
+      modal.className = "rmv-settings-modal";
       modal.innerHTML = `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Pengaturan unduhan</div>
-          <div style="font-size:13px;opacity:0.8;line-height:1.5;">Isi nama file, halaman awal, dan jumlah worker sebelum proses dimulai.</div>
+        <div class="rmv-settings-header">
+          <div class="rmv-settings-title">Pengaturan unduhan</div>
+          <div class="rmv-settings-subtitle">Isi nama file, halaman awal, dan jumlah worker sebelum proses dimulai.</div>
         </div>
-        <form id="rmv-settings-form" style="display:grid;gap:12px;">
-          <label style="display:grid;gap:6px;font-size:13px;">
+        <form id="rmv-settings-form" class="rmv-settings-form">
+          <label class="rmv-field">
             <span>Nama file PDF</span>
-            <input name="pdfFileName" type="text" value="${escapeHtml(defaults.defaultFileName)}" autocomplete="off" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:#0b1220;color:#fff;outline:none;" />
+            <input name="pdfFileName" type="text" value="${escapeHtml(defaults.defaultFileName)}" autocomplete="off" />
           </label>
-          <label style="display:grid;gap:6px;font-size:13px;">
+          <label class="rmv-field">
             <span>Halaman awal</span>
-            <input name="startPage" type="number" min="1" value="${defaults.defaultStartPage}" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:#0b1220;color:#fff;outline:none;" />
+            <input name="startPage" type="number" min="1" value="${defaults.defaultStartPage}" />
           </label>
-          <label style="display:grid;gap:6px;font-size:13px;">
+          <label class="rmv-field">
             <span>Worker</span>
-            <input name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:#0b1220;color:#fff;outline:none;" />
+            <input name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" />
           </label>
-          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
-            <button type="button" id="rmv-settings-cancel" style="padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#fff;cursor:pointer;">Batal</button>
-            <button type="submit" style="padding:10px 14px;border-radius:10px;border:none;background:#22c55e;color:#07130b;font-weight:700;cursor:pointer;">Mulai</button>
+          <label class="rmv-field">
+            <span>Orientasi</span>
+            <select name="orientation">
+              <option value="portrait" ${defaults.defaultOrientation === "portrait" ? "selected" : ""}>Portrait</option>
+              <option value="landscape" ${defaults.defaultOrientation === "landscape" ? "selected" : ""}>Landscape</option>
+            </select>
+          </label>
+          <label class="rmv-field">
+            <span>Ukuran kertas</span>
+            <select name="paperSize">
+              <option value="a4" ${defaults.defaultPaperSize === "a4" ? "selected" : ""}>A4</option>
+              <option value="letter" ${defaults.defaultPaperSize === "letter" ? "selected" : ""}>Letter</option>
+              <option value="legal" ${defaults.defaultPaperSize === "legal" ? "selected" : ""}>Legal</option>
+              <option value="a5" ${defaults.defaultPaperSize === "a5" ? "selected" : ""}>A5</option>
+            </select>
+          </label>
+          <div class="rmv-settings-actions">
+            <button type="button" id="rmv-settings-cancel" class="rmv-btn rmv-btn-ghost">Batal</button>
+            <button type="submit" class="rmv-btn rmv-btn-primary">Mulai</button>
           </div>
         </form>
       `;
@@ -134,9 +144,11 @@
         const pdfFileName = String(formData.get("pdfFileName") || defaults.defaultFileName).trim() || defaults.defaultFileName;
         const startPage = Math.max(1, parseInt(String(formData.get("startPage") || defaults.defaultStartPage), 10) || defaults.defaultStartPage);
         const concurrency = Math.max(1, parseInt(String(formData.get("concurrency") || defaults.defaultConcurrency), 10) || defaults.defaultConcurrency);
+        const orientation = String(formData.get("orientation") || defaults.defaultOrientation).toLowerCase() === "landscape" ? "landscape" : "portrait";
+        const paperSize = normalizePaperSize(formData.get("paperSize") || defaults.defaultPaperSize);
 
         cleanup();
-        resolve({ pdfFileName, startPage, concurrency });
+        resolve({ pdfFileName, startPage, concurrency, orientation, paperSize });
       });
 
       overlay.appendChild(modal);
@@ -155,6 +167,12 @@
       .replace(/>/g, "&gt;")
       .replace(/\"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function normalizePaperSize(value) {
+    const allowed = new Set(["a4", "letter", "legal", "a5"]);
+    const normalized = String(value || "a4").toLowerCase();
+    return allowed.has(normalized) ? normalized : "a4";
   }
 
   function buildPageUrl(pageNumber) {
@@ -200,7 +218,25 @@
     style.textContent = `
       @keyframes rmv-spin { to { transform: rotate(360deg); } }
       @keyframes rmv-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-      #rmv-download-console { position: fixed; right: 12px; top: 12px; width: 300px; padding: 10px; border-radius: 8px; z-index: 999999; color: #fff; font-family: Arial, sans-serif; font-size: 13px; background: rgba(0,0,0,0.8); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+      .rmv-settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: flex; align-items: center; justify-content: center; z-index: 1000000; padding: 16px; backdrop-filter: blur(6px); }
+      .rmv-settings-modal { width: min(100%, 460px); max-height: min(100vh - 32px, 720px); overflow: auto; background: #111827; color: #fff; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,0.45); padding: 20px; box-sizing: border-box; }
+      .rmv-settings-header { margin-bottom: 16px; }
+      .rmv-settings-title { font-size: clamp(18px, 4vw, 24px); font-weight: 700; margin-bottom: 6px; line-height: 1.2; }
+      .rmv-settings-subtitle { font-size: 13px; opacity: 0.82; line-height: 1.5; }
+      .rmv-settings-form { display: grid; gap: 14px; }
+      .rmv-field { display: grid; gap: 7px; font-size: 13px; }
+      .rmv-field span { opacity: 0.95; }
+      .rmv-field input,
+      .rmv-field select { width: 100%; box-sizing: border-box; padding: 12px 13px; min-height: 46px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: #0b1220; color: #fff; outline: none; font-size: 16px; line-height: 1.2; }
+      .rmv-field input:focus,
+      .rmv-field select:focus { border-color: rgba(34,197,94,0.8); box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+      .rmv-settings-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; flex-wrap: wrap; }
+      .rmv-btn { min-height: 44px; padding: 10px 16px; border-radius: 12px; font-size: 15px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
+      .rmv-btn:active { transform: translateY(1px); }
+      .rmv-btn-ghost { border: 1px solid rgba(255,255,255,0.12); background: transparent; color: #fff; }
+      .rmv-btn-primary { border: none; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #07130b; font-weight: 800; box-shadow: 0 10px 24px rgba(34,197,94,0.22); }
+      .rmv-btn-primary:hover { box-shadow: 0 12px 28px rgba(34,197,94,0.28); }
+      #rmv-download-console { position: fixed; right: 12px; top: 12px; width: min(320px, calc(100vw - 24px)); padding: 12px; border-radius: 14px; z-index: 999999; color: #fff; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.4; background: rgba(0,0,0,0.82); box-shadow: 0 10px 24px rgba(0,0,0,0.28); box-sizing: border-box; backdrop-filter: blur(4px); }
       #rmv-download-console .rmv-processing-details,
       #rmv-download-console .rmv-complete-details { display: none; }
       #rmv-download-console[data-mode="processing"] .rmv-processing-details { display: block; }
@@ -211,6 +247,15 @@
       #rmv-download-console[data-mode="done"] .rmv-bar { background: #d7ffe3 !important; }
       #rmv-download-console[data-mode="probing"] .rmv-bar,
       #rmv-download-console[data-mode="processing"] .rmv-bar { background: #2ecc71 !important; }
+      #rmv-download-console strong { font-size: 14px; }
+      #rmv-download-console .rmv-processing-details, #rmv-download-console .rmv-complete-details { word-break: break-word; }
+      @media (max-width: 480px) {
+        .rmv-settings-overlay { padding: 10px; align-items: flex-end; }
+        .rmv-settings-modal { width: 100%; max-height: calc(100vh - 20px); border-radius: 18px; padding: 16px; }
+        .rmv-settings-actions { flex-direction: column-reverse; }
+        .rmv-btn { width: 100%; }
+        #rmv-download-console { right: 10px; left: 10px; top: 10px; width: auto; }
+      }
     `;
     root.appendChild(style);
 
@@ -218,9 +263,9 @@
     panel.id = "rmv-download-console";
     panel.dataset.mode = "probing";
     panel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
         <strong id="rmv-status" class="rmv-status-line">Memuat...</strong>
-        <span id="rmv-spinner" class="rmv-spinner" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.32);border-top-color:#fff;display:inline-block;"></span>
+        <span id="rmv-spinner" class="rmv-spinner" style="width:14px;height:14px;min-width:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.32);border-top-color:#fff;display:inline-block;"></span>
       </div>
       <div id="rmv-processing-details" class="rmv-processing-details">
         <div style="margin-bottom:6px;">Diproses: <span id="rmv-fetched">0</span></div>
