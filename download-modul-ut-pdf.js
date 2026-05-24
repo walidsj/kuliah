@@ -11,6 +11,7 @@
   const defaultPaperSize = "a4";
 
   const body = await waitForBody();
+  await ensureTailwindStylesheet();
   let settings;
   try {
     settings = await askForDownloadSettings(body, {
@@ -77,52 +78,77 @@
     return `${value}`.replace(/[\/\\:*?"<>|]/g, "-");
   }
 
+  function ensureTailwindStylesheet() {
+    if (document.getElementById("rmv-tailwind-css")) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const link = document.createElement("link");
+      link.id = "rmv-tailwind-css";
+      link.rel = "stylesheet";
+      link.href = "https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css";
+      link.referrerPolicy = "no-referrer";
+      link.onload = () => resolve();
+      link.onerror = () => resolve();
+      document.head.appendChild(link);
+      window.setTimeout(resolve, 1500);
+    });
+  }
+
   function askForDownloadSettings(root, defaults) {
     return new Promise((resolve, reject) => {
-      ensureSettingsStyles(root);
-
       const overlay = document.createElement("div");
-      overlay.className = "rmv-settings-overlay";
+      overlay.className = "fixed inset-0 z-[1000000] flex items-end justify-center bg-black/70 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-4";
 
       const modal = document.createElement("div");
-      modal.className = "rmv-settings-modal";
+      modal.className = "w-full max-w-xl max-h-[calc(100vh-1.5rem)] overflow-auto rounded-3xl border border-white/10 bg-slate-950 text-white shadow-2xl shadow-black/40 ring-1 ring-white/5 sm:max-h-[calc(100vh-2rem)]";
       modal.innerHTML = `
-        <div class="rmv-settings-header">
-          <div class="rmv-settings-title">Pengaturan unduhan</div>
-          <div class="rmv-settings-subtitle">Isi nama file, halaman awal, dan jumlah worker sebelum proses dimulai.</div>
+        <div class="border-b border-white/10 px-5 py-5 sm:px-6">
+          <div class="flex items-start gap-3">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-400/20">${getUiIcon("settings")}</div>
+            <div class="min-w-0">
+              <div class="text-lg font-bold tracking-tight sm:text-xl">Pengaturan unduhan</div>
+              <div class="mt-1 text-sm leading-6 text-slate-300">Isi nama file, halaman awal, dan jumlah worker sebelum proses dimulai.</div>
+            </div>
+          </div>
         </div>
-        <form id="rmv-settings-form" class="rmv-settings-form">
-          <label class="rmv-field">
+        <form id="rmv-settings-form" class="grid gap-4 px-5 py-5 sm:px-6">
+          <label class="grid gap-2 text-sm font-medium text-slate-200">
             <span>Nama file PDF</span>
-            <input name="pdfFileName" type="text" value="${escapeHtml(defaults.defaultFileName)}" autocomplete="off" />
+            <input class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="pdfFileName" type="text" value="${escapeHtml(defaults.defaultFileName)}" autocomplete="off" />
           </label>
-          <label class="rmv-field">
-            <span>Halaman awal</span>
-            <input name="startPage" type="number" min="1" value="${defaults.defaultStartPage}" />
-          </label>
-          <label class="rmv-field">
-            <span>Worker</span>
-            <input name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" />
-          </label>
-          <label class="rmv-field">
-            <span>Orientasi</span>
-            <select name="orientation">
-              <option value="portrait" ${defaults.defaultOrientation === "portrait" ? "selected" : ""}>Portrait</option>
-              <option value="landscape" ${defaults.defaultOrientation === "landscape" ? "selected" : ""}>Landscape</option>
-            </select>
-          </label>
-          <label class="rmv-field">
-            <span>Ukuran kertas</span>
-            <select name="paperSize">
-              <option value="a4" ${defaults.defaultPaperSize === "a4" ? "selected" : ""}>A4</option>
-              <option value="letter" ${defaults.defaultPaperSize === "letter" ? "selected" : ""}>Letter</option>
-              <option value="legal" ${defaults.defaultPaperSize === "legal" ? "selected" : ""}>Legal</option>
-              <option value="a5" ${defaults.defaultPaperSize === "a5" ? "selected" : ""}>A5</option>
-            </select>
-          </label>
-          <div class="rmv-settings-actions">
-            <button type="button" id="rmv-settings-cancel" class="rmv-btn rmv-btn-ghost">Batal</button>
-            <button type="submit" class="rmv-btn rmv-btn-primary">Mulai</button>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-2 text-sm font-medium text-slate-200">
+              <span>Halaman awal</span>
+              <input class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="startPage" type="number" min="1" value="${defaults.defaultStartPage}" />
+            </label>
+            <label class="grid gap-2 text-sm font-medium text-slate-200">
+              <span>Worker</span>
+              <input class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" />
+            </label>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-2 text-sm font-medium text-slate-200">
+              <span>Orientasi</span>
+              <select class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="orientation">
+                <option value="portrait" ${defaults.defaultOrientation === "portrait" ? "selected" : ""}>Portrait</option>
+                <option value="landscape" ${defaults.defaultOrientation === "landscape" ? "selected" : ""}>Landscape</option>
+              </select>
+            </label>
+            <label class="grid gap-2 text-sm font-medium text-slate-200">
+              <span>Ukuran kertas</span>
+              <select class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="paperSize">
+                <option value="a4" ${defaults.defaultPaperSize === "a4" ? "selected" : ""}>A4</option>
+                <option value="letter" ${defaults.defaultPaperSize === "letter" ? "selected" : ""}>Letter</option>
+                <option value="legal" ${defaults.defaultPaperSize === "legal" ? "selected" : ""}>Legal</option>
+                <option value="a5" ${defaults.defaultPaperSize === "a5" ? "selected" : ""}>A5</option>
+              </select>
+            </label>
+          </div>
+          <div class="mt-1 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" id="rmv-settings-cancel" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/5 active:scale-[0.99]">${getUiIcon("x")}<span>Batal</span></button>
+            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-3 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 active:scale-[0.99]">${getUiIcon("play")}<span>Mulai</span></button>
           </div>
         </form>
       `;
@@ -162,42 +188,6 @@
     });
   }
 
-  function ensureSettingsStyles(root) {
-    if (document.getElementById("rmv-settings-styles")) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.id = "rmv-settings-styles";
-    style.textContent = `
-      .rmv-settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: flex; align-items: center; justify-content: center; z-index: 1000000; padding: 16px; backdrop-filter: blur(6px); }
-      .rmv-settings-modal { width: min(100%, 460px); max-height: min(100vh - 32px, 720px); overflow: auto; background: #111827; color: #fff; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,0.45); padding: 20px; box-sizing: border-box; }
-      .rmv-settings-header { margin-bottom: 16px; }
-      .rmv-settings-title { font-size: clamp(18px, 4vw, 24px); font-weight: 700; margin-bottom: 6px; line-height: 1.2; }
-      .rmv-settings-subtitle { font-size: 13px; opacity: 0.82; line-height: 1.5; }
-      .rmv-settings-form { display: grid; gap: 14px; }
-      .rmv-field { display: grid; gap: 7px; font-size: 13px; }
-      .rmv-field span { opacity: 0.95; }
-      .rmv-field input,
-      .rmv-field select { width: 100%; box-sizing: border-box; padding: 12px 13px; min-height: 46px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: #0b1220; color: #fff; outline: none; font-size: 16px; line-height: 1.2; }
-      .rmv-field input:focus,
-      .rmv-field select:focus { border-color: rgba(34,197,94,0.8); box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
-      .rmv-settings-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; flex-wrap: wrap; }
-      .rmv-btn { min-height: 44px; padding: 10px 16px; border-radius: 12px; font-size: 15px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
-      .rmv-btn:active { transform: translateY(1px); }
-      .rmv-btn-ghost { border: 1px solid rgba(255,255,255,0.12); background: transparent; color: #fff; }
-      .rmv-btn-primary { border: none; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #07130b; font-weight: 800; box-shadow: 0 10px 24px rgba(34,197,94,0.22); }
-      .rmv-btn-primary:hover { box-shadow: 0 12px 28px rgba(34,197,94,0.28); }
-      @media (max-width: 480px) {
-        .rmv-settings-overlay { padding: 10px; align-items: flex-end; }
-        .rmv-settings-modal { width: 100%; max-height: calc(100vh - 20px); border-radius: 18px; padding: 16px; }
-        .rmv-settings-actions { flex-direction: column-reverse; }
-        .rmv-btn { width: 100%; }
-      }
-    `;
-    root.appendChild(style);
-  }
-
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -211,6 +201,32 @@
     const allowed = new Set(["a4", "letter", "legal", "a5"]);
     const normalized = String(value || "a4").toLowerCase();
     return allowed.has(normalized) ? normalized : "a4";
+  }
+
+  function getUiIcon(name) {
+    const base = 'class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+
+    if (name === "settings") {
+      return `<svg ${base} viewBox="0 0 24 24"><path d="M10.325 4.317a1.75 1.75 0 0 1 3.35 0l.44 1.446a1.75 1.75 0 0 0 1.67 1.226h1.52a1.75 1.75 0 0 1 1.29 2.93l-.98 1.127a1.75 1.75 0 0 0-.42 1.78l.44 1.45a1.75 1.75 0 0 1-1.67 2.25h-1.82a1.75 1.75 0 0 0-1.47.79l-.84 1.36a1.75 1.75 0 0 1-3 0l-.84-1.36a1.75 1.75 0 0 0-1.47-.79H5.2a1.75 1.75 0 0 1-1.67-2.25l.44-1.45a1.75 1.75 0 0 0-.42-1.78l-.98-1.13a1.75 1.75 0 0 1 1.29-2.93h1.52a1.75 1.75 0 0 0 1.67-1.226l.44-1.446a1.75 1.75 0 0 1 1.81-1.317z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    }
+
+    if (name === "play") {
+      return `<svg ${base} viewBox="0 0 24 24"><path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.2-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z"/></svg>`;
+    }
+
+    if (name === "x") {
+      return `<svg ${base} viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+    }
+
+    if (name === "check") {
+      return `<svg ${base} viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>`;
+    }
+
+    if (name === "loading") {
+      return `<svg class="h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" stroke-linecap="round"/></svg>`;
+    }
+
+    return "";
   }
 
   function buildPageUrl(pageNumber) {
@@ -252,45 +268,29 @@
   }
 
   function createStatusPanel(root, concurrency) {
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes rmv-spin { to { transform: rotate(360deg); } }
-      @keyframes rmv-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-      #rmv-download-console { position: fixed; right: 12px; top: 12px; width: min(320px, calc(100vw - 24px)); padding: 12px; border-radius: 14px; z-index: 999999; color: #fff; font-family: Arial, sans-serif; font-size: 13px; line-height: 1.4; background: rgba(0,0,0,0.82); box-shadow: 0 10px 24px rgba(0,0,0,0.28); box-sizing: border-box; backdrop-filter: blur(4px); }
-      #rmv-download-console .rmv-processing-details,
-      #rmv-download-console .rmv-complete-details { display: none; }
-      #rmv-download-console[data-mode="processing"] .rmv-processing-details { display: block; }
-      #rmv-download-console[data-mode="done"] .rmv-complete-details { display: block; }
-      #rmv-download-console[data-mode="probing"] .rmv-status-line { animation: rmv-pulse 1.1s ease-in-out infinite; }
-      #rmv-download-console[data-mode="probing"] .rmv-spinner { animation: rmv-spin 0.8s linear infinite; }
-      #rmv-download-console[data-mode="done"] { background: linear-gradient(135deg, #0f7a3a 0%, #19a34a 100%) !important; box-shadow: 0 8px 24px rgba(25,163,74,0.35) !important; }
-      #rmv-download-console[data-mode="done"] .rmv-bar { background: #d7ffe3 !important; }
-      #rmv-download-console[data-mode="probing"] .rmv-bar,
-      #rmv-download-console[data-mode="processing"] .rmv-bar { background: #2ecc71 !important; }
-      #rmv-download-console strong { font-size: 14px; }
-      #rmv-download-console .rmv-processing-details, #rmv-download-console .rmv-complete-details { word-break: break-word; }
-      @media (max-width: 480px) {
-        #rmv-download-console { right: 10px; left: 10px; top: 10px; width: auto; }
-      }
-    `;
-    root.appendChild(style);
-
     const panel = document.createElement("div");
     panel.id = "rmv-download-console";
+    panel.className = "fixed right-3 top-3 z-[999999] w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-white/10 bg-slate-950/90 p-3 font-sans text-sm leading-5 text-white shadow-2xl shadow-black/30 backdrop-blur-sm max-[480px]:left-3 max-[480px]:right-3 max-[480px]:top-3 max-[480px]:w-auto";
     panel.dataset.mode = "probing";
     panel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
-        <strong id="rmv-status" class="rmv-status-line">Memuat...</strong>
-        <span id="rmv-spinner" class="rmv-spinner" style="width:14px;height:14px;min-width:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.32);border-top-color:#fff;display:inline-block;"></span>
+      <div class="mb-3 flex items-start justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-2">
+          <span id="rmv-status-icon" class="text-cyan-300">${getUiIcon("loading")}</span>
+          <strong id="rmv-status" class="rmv-status-line truncate text-sm font-semibold">Memuat...</strong>
+        </div>
+        <span id="rmv-spinner" class="rmv-spinner mt-0.5 inline-block h-3.5 w-3.5 min-w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
       </div>
-      <div id="rmv-processing-details" class="rmv-processing-details">
-        <div style="margin-bottom:6px;">Diproses: <span id="rmv-fetched">0</span></div>
-        <div style="margin-bottom:6px;">Halaman terakhir: <span id="rmv-last">-</span></div>
-        <div style="height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div id="rmv-bar" class="rmv-bar" style="height:100%;width:0%;background:#2ecc71"></div></div>
-        <div style="font-size:11px;opacity:0.85">Worker: <span id="rmv-workers">${concurrency}</span></div>
+      <div id="rmv-processing-details" class="hidden">
+        <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-slate-300"><span>Diproses</span><span id="rmv-fetched" class="font-semibold text-white">0</span></div>
+        <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-slate-300"><span>Halaman terakhir</span><span id="rmv-last" class="font-semibold text-white">-</span></div>
+        <div class="mb-1.5 h-2 overflow-hidden rounded-full bg-white/10"><div id="rmv-bar" class="h-full w-0 rounded-full bg-cyan-400 transition-[width] duration-200"></div></div>
+        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400"><span>Worker</span><span id="rmv-workers" class="font-semibold text-slate-200">${concurrency}</span></div>
       </div>
-      <div id="rmv-complete-details" class="rmv-complete-details" style="font-size:15px;font-weight:700;letter-spacing:0.2px;">
-        Total halaman: <span id="rmv-pages-done">0</span>
+      <div id="rmv-complete-details" class="hidden text-base font-bold tracking-tight">
+        <div class="flex items-center gap-2 text-emerald-50">
+          <span>${getUiIcon("check")}</span>
+          <span>Total halaman: <span id="rmv-pages-done">0</span></span>
+        </div>
       </div>
     `;
     root.appendChild(panel);
@@ -298,6 +298,7 @@
     const elements = {
       status: panel.querySelector("#rmv-status"),
       spinner: panel.querySelector("#rmv-spinner"),
+      statusIcon: panel.querySelector("#rmv-status-icon"),
       fetched: panel.querySelector("#rmv-fetched"),
       last: panel.querySelector("#rmv-last"),
       bar: panel.querySelector("#rmv-bar"),
@@ -307,33 +308,51 @@
     const ui = {
       setProbing() {
         panel.dataset.mode = "probing";
+        elements.statusIcon.innerHTML = getUiIcon("loading");
+        elements.statusIcon.className = "text-cyan-300";
+        panel.querySelector("#rmv-processing-details").classList.add("hidden");
+        panel.querySelector("#rmv-complete-details").classList.add("hidden");
         elements.status.textContent = "Memuat...";
-        elements.spinner.style.display = "inline-block";
+        elements.spinner.classList.remove("hidden");
       },
       setProcessing(progress, fetchedPages, lastKnownPage) {
         panel.dataset.mode = "processing";
-        elements.spinner.style.display = "none";
+        elements.statusIcon.innerHTML = getUiIcon("loading");
+        elements.statusIcon.className = "text-cyan-300";
         elements.status.textContent = "Memproses";
+        panel.querySelector("#rmv-processing-details").classList.remove("hidden");
+        panel.querySelector("#rmv-complete-details").classList.add("hidden");
+        elements.spinner.classList.add("hidden");
         elements.fetched.textContent = String(fetchedPages);
         elements.last.textContent = String(lastKnownPage);
         elements.bar.style.width = `${Math.round(progress * 100)}%`;
       },
       setProbingComplete(lastKnownPage) {
         panel.dataset.mode = "processing";
-        elements.spinner.style.display = "none";
+        elements.statusIcon.innerHTML = getUiIcon("loading");
+        elements.statusIcon.className = "text-cyan-300";
         elements.status.textContent = "Memproses";
+        panel.querySelector("#rmv-processing-details").classList.remove("hidden");
+        panel.querySelector("#rmv-complete-details").classList.add("hidden");
+        elements.spinner.classList.add("hidden");
         elements.last.textContent = String(lastKnownPage);
       },
       setCancelled() {
         panel.dataset.mode = "idle";
-        panel.style.background = "rgba(0,0,0,0.8)";
-        panel.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
-        elements.spinner.style.display = "none";
+        panel.querySelector("#rmv-processing-details").classList.add("hidden");
+        panel.querySelector("#rmv-complete-details").classList.add("hidden");
+        elements.spinner.classList.add("hidden");
+        elements.statusIcon.innerHTML = getUiIcon("x");
+        elements.statusIcon.className = "text-rose-300";
         elements.status.textContent = "Dibatalkan";
       },
       setDone(totalPages) {
         panel.dataset.mode = "done";
-        elements.spinner.style.display = "none";
+        panel.querySelector("#rmv-processing-details").classList.add("hidden");
+        panel.querySelector("#rmv-complete-details").classList.remove("hidden");
+        elements.spinner.classList.add("hidden");
+        elements.statusIcon.innerHTML = getUiIcon("check");
+        elements.statusIcon.className = "text-emerald-200";
         elements.status.textContent = "Selesai";
         elements.pagesDone.textContent = String(totalPages);
       },
