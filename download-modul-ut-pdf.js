@@ -70,57 +70,78 @@
   });
 
   let firstPage = true;
+  // Faster: fetch pages in batches (limited concurrency) and process with createImageBitmap
+  const CONCURRENCY = 4;
+  let pageCursor = i;
+  const images = []; // {p, dataUrl, width, height}
 
-  while (true) {
-    try {
-      const url = generateUri(doc, subfolder, i);
+  outer: while (true) {
+    const batch = Array.from({ length: CONCURRENCY }, (_, k) => pageCursor + k);
+
+    const promises = batch.map(async (p) => {
+      const url = generateUri(doc, subfolder, p);
       const res = await fetch(url, { signal: abortController.signal });
       const blob = await res.blob();
 
       if (!blob.type.startsWith("image") || blob.size < 5000) {
-        break;
+        return { p, valid: false };
       }
 
-      const dataUrl = await blobToDataURL(blob);
-      const img = await loadImage(dataUrl);
-
-      if (img.width < 200 || img.height < 200) {
-        break;
+      const bitmap = await createImageBitmap(blob);
+      if (bitmap.width < 200 || bitmap.height < 200) {
+        return { p, valid: false };
       }
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
 
-      const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
-      const width = img.width * ratio;
-      const height = img.height * ratio;
+      return { p, valid: true, dataUrl, width: bitmap.width, height: bitmap.height };
+    });
 
-      const x = (pageWidth - width) / 2;
-      const y = (pageHeight - height) / 2;
-
-      if (!firstPage) {
-        pdf.addPage();
-      }
-
-      pdf.addImage(dataUrl, "JPEG", x, y, width, height);
-
-      console.log("Added page", i);
-
-      firstPage = false;
-      i++;
-
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.random() * 100 + 500) // delay antara 500ms hingga 600ms
-      );
+    let results;
+    try {
+      results = await Promise.all(promises);
     } catch (err) {
       if (cancelled || err.name === "AbortError") {
         alert("Download dibatalkan sebelum selesai.");
         return "Download cancelled";
       }
 
-      alert(`Gagal memproses halaman ${i}. ${err?.message || err}`);
+      alert(`Gagal memproses halaman ${pageCursor}. ${err?.message || err}`);
       break;
     }
+
+    for (const r of results) {
+      if (!r.valid) {
+        break outer; // stop when a page signals end
+      }
+      images.push(r);
+    }
+
+    pageCursor += CONCURRENCY;
+  }
+
+  // Add images to PDF in order
+  images.sort((a, b) => a.p - b.p);
+  for (const img of images) {
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
+    const width = img.width * ratio;
+    const height = img.height * ratio;
+
+    const x = (pageWidth - width) / 2;
+    const y = (pageHeight - height) / 2;
+
+    if (!firstPage) pdf.addPage();
+    pdf.addImage(img.dataUrl, "JPEG", x, y, width, height);
+    console.log("Added page", img.p);
+    firstPage = false;
   }
 
   if (cancelled || abortController.signal.aborted) {
