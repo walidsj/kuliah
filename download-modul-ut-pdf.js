@@ -75,8 +75,11 @@
   let pageCursor = i;
   const images = []; // {p, dataUrl, width, height}
 
+  console.log(`Start download from page ${i} with concurrency=${CONCURRENCY}`);
+
   outer: while (true) {
     const batch = Array.from({ length: CONCURRENCY }, (_, k) => pageCursor + k);
+    console.log(`Fetching pages ${batch[0]}..${batch[batch.length - 1]}`);
 
     const promises = batch.map(async (p) => {
       const url = generateUri(doc, subfolder, p);
@@ -84,11 +87,13 @@
       const blob = await res.blob();
 
       if (!blob.type.startsWith("image") || blob.size < 5000) {
+        console.log(`Page ${p} is not a valid image or too small.`);
         return { p, valid: false };
       }
 
       const bitmap = await createImageBitmap(blob);
       if (bitmap.width < 200 || bitmap.height < 200) {
+        console.log(`Page ${p} image dimensions too small: ${bitmap.width}x${bitmap.height}`);
         return { p, valid: false };
       }
 
@@ -117,9 +122,11 @@
 
     for (const r of results) {
       if (!r.valid) {
+        console.log(`No more pages after ${r.p - 1}`);
         break outer; // stop when a page signals end
       }
       images.push(r);
+      console.log(`Fetched page ${r.p} (queued ${images.length})`);
     }
 
     pageCursor += CONCURRENCY;
