@@ -32,7 +32,7 @@
 
   let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + generateFileName(subfolder, doc) + "):") || generateFileName(subfolder, doc);
   let startPage = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
-  let concurrency = parseInt(prompt("Masukkan jumlah worker/concurrency (default 10):") || "10");
+  let concurrency = parseInt(prompt("Masukkan jumlah worker (default 10):") || "10");
 
   let cancelled = false;
   const abortController = new AbortController();
@@ -59,7 +59,7 @@
   let finished = false;
   const images = []; // collected {p, dataUrl, width, height}
 
-  console.log(`Start download from page ${startPage} with concurrency=${CONCURRENCY}`);
+  console.log(`Mulai unduh dari halaman ${startPage} dengan concurrency=${CONCURRENCY}`);
 
   // --- Floating console UI ---
   // Ensure document.body exists before creating/appending the UI
@@ -77,13 +77,12 @@
   uiStyle.textContent = `
     @keyframes rmv-spin { to { transform: rotate(360deg); } }
     @keyframes rmv-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-    #rmv-download-console .rmv-probing-details,
     #rmv-download-console .rmv-processing-details,
     #rmv-download-console .rmv-complete-details { display: none; }
-    #rmv-download-console[data-mode="probing"] .rmv-probing-details { display: block; }
     #rmv-download-console[data-mode="processing"] .rmv-processing-details { display: block; }
     #rmv-download-console[data-mode="done"] .rmv-complete-details { display: block; }
     #rmv-download-console[data-mode="probing"] .rmv-status-line { animation: rmv-pulse 1.1s ease-in-out infinite; }
+    #rmv-download-console[data-mode="probing"] .rmv-spinner { animation: rmv-spin 0.8s linear infinite; }
     #rmv-download-console[data-mode="done"] { background: linear-gradient(135deg, #0f7a3a 0%, #19a34a 100%) !important; box-shadow: 0 8px 24px rgba(25,163,74,0.35) !important; }
     #rmv-download-console[data-mode="done"] .rmv-bar { background: #d7ffe3 !important; }
     #rmv-download-console[data-mode="probing"] .rmv-bar { background: #2ecc71 !important; }
@@ -108,18 +107,16 @@
   ui.dataset.mode = "probing";
   ui.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <strong id="rmv-status" class="rmv-status-line">Mencari halaman terakhir...</strong>
-      <span id="rmv-spinner" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.32);border-top-color:#fff;display:inline-block;animation:rmv-spin 0.8s linear infinite;"></span>
+      <strong id="rmv-status" class="rmv-status-line">Memuat...</strong>
+      <span id="rmv-spinner" class="rmv-spinner" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.32);border-top-color:#fff;display:inline-block;"></span>
     </div>
-    <div id="rmv-probing-details" class="rmv-probing-details" style="font-size:12px;opacity:0.85;animation:rmv-pulse 1.1s ease-in-out infinite;">Sedang memeriksa halaman akhir.</div>
     <div id="rmv-processing-details" class="rmv-processing-details">
-      <div style="margin-bottom:6px;">Fetched: <span id="rmv-fetched">0</span></div>
-      <div style="margin-bottom:6px;">Last page: <span id="rmv-last">-</span></div>
+      <div style="margin-bottom:6px;">Diproses: <span id="rmv-fetched">0</span></div>
+      <div style="margin-bottom:6px;">Halaman terakhir: <span id="rmv-last">-</span></div>
       <div style="height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div id="rmv-bar" class="rmv-bar" style="height:100%;width:0%;background:#2ecc71"></div></div>
     </div>
-    <div id="rmv-complete-details" class="rmv-complete-details">
-      <div style="margin-bottom:4px;">Fetched: <span id="rmv-fetched-done">0</span></div>
-      <div style="margin-bottom:4px;">Last page: <span id="rmv-last-done">-</span></div>
+    <div id="rmv-complete-details" class="rmv-complete-details" style="font-size:15px;font-weight:700;letter-spacing:0.2px;">
+      Total halaman: <span id="rmv-pages-done">0</span>
     </div>
   `;
   document.body.appendChild(ui);
@@ -128,8 +125,7 @@
   const elSpinner = ui.querySelector('#rmv-spinner');
   const elFetched = ui.querySelector('#rmv-fetched');
   const elLast = ui.querySelector('#rmv-last');
-  const elFetchedDone = ui.querySelector('#rmv-fetched-done');
-  const elLastDone = ui.querySelector('#rmv-last-done');
+  const elPagesDone = ui.querySelector('#rmv-pages-done');
   const elBar = ui.querySelector('#rmv-bar');
 
   let fetchedCount = 0;
@@ -142,8 +138,7 @@
       ui.dataset.mode = "done";
       elStatus.textContent = 'Selesai';
       elSpinner.style.display = 'none';
-      elFetchedDone.textContent = String(fetchedCount);
-      elLastDone.textContent = lastPage !== null ? String(lastPage) : String(Math.max(startPage, nextPage - 1));
+      elPagesDone.textContent = String(fetchedCount);
       return;
     }
 
@@ -158,7 +153,7 @@
 
     if (!probingComplete) {
       ui.dataset.mode = "probing";
-      elStatus.textContent = 'Mencari halaman terakhir...';
+      elStatus.textContent = 'Memuat...';
       elSpinner.style.display = 'inline-block';
       return;
     }
@@ -175,13 +170,13 @@
     }
     const frac = Math.min(1, fetchedCount / assigned);
     elBar.style.width = `${Math.round(frac * 100)}%`;
-    elStatus.textContent = 'Processing';
+    elStatus.textContent = 'Memproses';
   }
 
   updateUI();
   // --- end UI ---
 
-  // --- Detect last page using exponential + binary search probing ---
+  // --- Cari halaman terakhir dengan pencarian eksponensial + biner ---
   async function probePage(p) {
     try {
       const ctl = new AbortController();
@@ -198,23 +193,23 @@
   }
 
   async function findLastPage(startAt) {
-    // If start page itself is invalid, return startAt - 1
+    // Jika halaman awal tidak valid, kembalikan startAt - 1
     if (!(await probePage(startAt))) return startAt - 1;
 
-    // exponential search to find an upper bound
+    // pencarian eksponensial untuk batas atas
     let lo = startAt;
     let hi = startAt + 1;
     while (await probePage(hi)) {
       lo = hi;
       hi = hi * 2; // exponential growth
-      // cap hi to avoid runaway (e.g., 10000 pages)
+      // batasi hi agar tidak liar (mis. 10000 halaman)
       if (hi > startAt + 10000) {
         hi = startAt + 10000;
         break;
       }
     }
 
-    // binary search between lo (valid) and hi (invalid)
+    // pencarian biner antara lo (valid) dan hi (invalid)
     let left = lo;
     let right = hi;
     while (left + 1 < right) {
@@ -224,7 +219,7 @@
     return left;
   }
 
-  // start detection and update UI
+  // mulai deteksi dan perbarui UI
   let detectedLast = null;
   try {
     detectedLast = await findLastPage(startPage);
@@ -246,13 +241,13 @@
     const blob = await res.blob();
 
     if (!blob.type.startsWith("image") || blob.size < 5000) {
-      console.log(`Page ${p} is not a valid image or too small.`);
+      console.log(`Halaman ${p} bukan gambar valid atau ukurannya terlalu kecil.`);
       return { p, valid: false };
     }
 
     const bitmap = await createImageBitmap(blob);
     if (bitmap.width < 200 || bitmap.height < 200) {
-      console.log(`Page ${p} image dimensions too small: ${bitmap.width}x${bitmap.height}`);
+      console.log(`Dimensi gambar halaman ${p} terlalu kecil: ${bitmap.width}x${bitmap.height}`);
       return { p, valid: false };
     }
 
@@ -281,11 +276,11 @@
           }
           images.push(r);
           fetchedCount++;
-          console.log(`Fetched page ${r.p} (queued ${images.length})`);
+          console.log(`Halaman ${r.p} diambil (antrian ${images.length})`);
           updateUI();
         } catch (err) {
           if (cancelled || err.name === "AbortError") {
-            alert("Download dibatalkan sebelum selesai.");
+            alert("Unduhan dibatalkan sebelum selesai.");
             finished = true;
             break;
           }
@@ -305,7 +300,7 @@
 
   if (cancelled || abortController.signal.aborted) {
     alert("PDF tidak disimpan karena proses dibatalkan.");
-    return "Download cancelled";
+    return "Unduhan dibatalkan";
   }
 
   // Add images to PDF in order
@@ -323,7 +318,7 @@
 
     if (!firstPage) pdf.addPage();
     pdf.addImage(img.dataUrl, "JPEG", x, y, width, height);
-    console.log("Added page", img.p);
+    console.log("Menambahkan halaman", img.p);
     firstPage = false;
   }
 
@@ -333,5 +328,5 @@
 
   console.log("PDF selesai:", filename);
 
-  return "PDF generated";
+  return "PDF selesai dibuat";
 })();
