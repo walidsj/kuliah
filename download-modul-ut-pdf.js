@@ -127,12 +127,11 @@
     alert("PDF tidak disimpan karena proses dibatalkan.");
     return "Download cancelled";
   }
+ 
 
-  const filename = `${pdfFileName}`.replace(/[\/\\:*?"<>|]/g, "-");
+  pdf.save(pdfFileName);
 
-  pdf.save(filename);
-
-  console.log("PDF selesai:", filename);
+  console.log("PDF selesai:", pdfFileName);
 
   return "PDF generated";
 })();
