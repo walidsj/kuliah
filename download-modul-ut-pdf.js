@@ -11,6 +11,16 @@
   let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + subfolder + "-" + doc + "):") || generateFileName(subfolder, doc);
 
   let i = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
+  let cancelled = false;
+  const abortController = new AbortController();
+
+  const cancelDownload = () => {
+    cancelled = true;
+    abortController.abort();
+  };
+
+  window.addEventListener("beforeunload", cancelDownload, { once: true });
+  window.addEventListener("pagehide", cancelDownload, { once: true });
 
  
   function generateUri(docName, subfolderName, pageNumber) {
@@ -64,7 +74,7 @@
   while (true) {
     try {
       const url = generateUri(doc, subfolder, i);
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: abortController.signal });
       const blob = await res.blob();
 
       if (!blob.type.startsWith("image") || blob.size < 5000) {
@@ -103,9 +113,19 @@
         setTimeout(resolve, Math.random() * 100 + 500) // delay antara 500ms hingga 600ms
       );
     } catch (err) {
-      console.log("Stop di halaman", i);
+      if (cancelled || err.name === "AbortError") {
+        alert("Download dibatalkan sebelum selesai.");
+        return "Download cancelled";
+      }
+
+      alert(`Gagal memproses halaman ${i}. ${err?.message || err}`);
       break;
     }
+  }
+
+  if (cancelled || abortController.signal.aborted) {
+    alert("PDF tidak disimpan karena proses dibatalkan.");
+    return "Download cancelled";
   }
 
   const filename = `${pdfFileName}`.replace(/[\/\\:*?"<>|]/g, "-");
