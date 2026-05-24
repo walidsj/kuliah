@@ -32,7 +32,7 @@
 
   let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + generateFileName(subfolder, doc) + "):") || generateFileName(subfolder, doc);
   let startPage = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
-  let concurrency = parseInt(prompt("Masukkan jumlah worker/concurrency (default 20):") || "20");
+  let concurrency = parseInt(prompt("Masukkan jumlah worker/concurrency (default 10):") || "10");
 
   let cancelled = false;
   const abortController = new AbortController();
@@ -54,7 +54,7 @@
   let firstPage = true;
 
   // Worker-pool concurrency so logs appear as each page completes
-  const CONCURRENCY = concurrency > 0 ? concurrency : 20;
+  const CONCURRENCY = concurrency;
   let nextPage = startPage;
   let finished = false;
   const images = []; // collected {p, dataUrl, width, height}
@@ -73,6 +73,24 @@
     });
   }
 
+  const uiStyle = document.createElement("style");
+  uiStyle.textContent = `
+    @keyframes rmv-spin { to { transform: rotate(360deg); } }
+    @keyframes rmv-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+    #rmv-download-console .rmv-probing-details,
+    #rmv-download-console .rmv-processing-details,
+    #rmv-download-console .rmv-complete-details { display: none; }
+    #rmv-download-console[data-mode="probing"] .rmv-probing-details { display: block; }
+    #rmv-download-console[data-mode="processing"] .rmv-processing-details { display: block; }
+    #rmv-download-console[data-mode="done"] .rmv-complete-details { display: block; }
+    #rmv-download-console[data-mode="probing"] .rmv-status-line { animation: rmv-pulse 1.1s ease-in-out infinite; }
+    #rmv-download-console[data-mode="done"] { background: linear-gradient(135deg, #0f7a3a 0%, #19a34a 100%) !important; box-shadow: 0 8px 24px rgba(25,163,74,0.35) !important; }
+    #rmv-download-console[data-mode="done"] .rmv-bar { background: #d7ffe3 !important; }
+    #rmv-download-console[data-mode="probing"] .rmv-bar { background: #2ecc71 !important; }
+    #rmv-download-console[data-mode="processing"] .rmv-bar { background: #2ecc71 !important; }
+  `;
+  document.head.appendChild(uiStyle);
+
   const ui = document.createElement("div");
   ui.id = "rmv-download-console";
   ui.style.position = "fixed";
@@ -87,35 +105,68 @@
   ui.style.borderRadius = "8px";
   ui.style.zIndex = 999999;
   ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+  ui.dataset.mode = "probing";
   ui.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <strong id="rmv-status">Starting...</strong>
+      <strong id="rmv-status" class="rmv-status-line">Mencari halaman terakhir...</strong>
+      <span id="rmv-spinner" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.32);border-top-color:#fff;display:inline-block;animation:rmv-spin 0.8s linear infinite;"></span>
     </div>
-    <div style="margin-bottom:6px;">Fetched: <span id="rmv-fetched">0</span></div>
-    <div style="margin-bottom:6px;">Last page: <span id="rmv-last">-</span></div>
-    <div style="height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div id="rmv-bar" style="height:100%;width:0%;background:#2ecc71"></div></div>
-    <div style="font-size:11px;opacity:0.85">Workers: <span id="rmv-workers">${CONCURRENCY}</span></div>
+    <div id="rmv-probing-details" class="rmv-probing-details" style="font-size:12px;opacity:0.85;animation:rmv-pulse 1.1s ease-in-out infinite;">Sedang memeriksa halaman akhir.</div>
+    <div id="rmv-processing-details" class="rmv-processing-details">
+      <div style="margin-bottom:6px;">Fetched: <span id="rmv-fetched">0</span></div>
+      <div style="margin-bottom:6px;">Last page: <span id="rmv-last">-</span></div>
+      <div style="height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div id="rmv-bar" class="rmv-bar" style="height:100%;width:0%;background:#2ecc71"></div></div>
+    </div>
+    <div id="rmv-complete-details" class="rmv-complete-details">
+      <div style="margin-bottom:4px;">Fetched: <span id="rmv-fetched-done">0</span></div>
+      <div style="margin-bottom:4px;">Last page: <span id="rmv-last-done">-</span></div>
+    </div>
   `;
   document.body.appendChild(ui);
 
   const elStatus = ui.querySelector('#rmv-status');
+  const elSpinner = ui.querySelector('#rmv-spinner');
   const elFetched = ui.querySelector('#rmv-fetched');
   const elLast = ui.querySelector('#rmv-last');
+  const elFetchedDone = ui.querySelector('#rmv-fetched-done');
+  const elLastDone = ui.querySelector('#rmv-last-done');
   const elBar = ui.querySelector('#rmv-bar');
 
   let fetchedCount = 0;
   // known last page (null = unknown)
   let lastPage = null;
+  let probingComplete = false;
 
   function updateUI() {
-    elFetched.textContent = String(fetchedCount);
-    // If we detected lastPage, show it; otherwise show the last probed page
-    if (lastPage !== undefined && lastPage !== null) {
-      elLast.textContent = String(lastPage);
-    } else {
-      elLast.textContent = String(Math.max(startPage, nextPage - 1));
+    if (finished && !cancelled) {
+      ui.dataset.mode = "done";
+      elStatus.textContent = 'Selesai';
+      elSpinner.style.display = 'none';
+      elFetchedDone.textContent = String(fetchedCount);
+      elLastDone.textContent = lastPage !== null ? String(lastPage) : String(Math.max(startPage, nextPage - 1));
+      return;
     }
-    // progress fraction = fetched / assigned
+
+    if (cancelled) {
+      ui.dataset.mode = "idle";
+      ui.style.background = "rgba(0,0,0,0.8)";
+      ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+      elSpinner.style.display = 'none';
+      elStatus.textContent = 'Dibatalkan';
+      return;
+    }
+
+    if (!probingComplete) {
+      ui.dataset.mode = "probing";
+      elStatus.textContent = 'Mencari halaman terakhir...';
+      elSpinner.style.display = 'inline-block';
+      return;
+    }
+
+    ui.dataset.mode = "processing";
+    elSpinner.style.display = 'none';
+    elFetched.textContent = String(fetchedCount);
+    elLast.textContent = lastPage !== null ? String(lastPage) : String(Math.max(startPage, nextPage - 1));
     let assigned;
     if (lastPage !== undefined && lastPage !== null) {
       assigned = Math.max(1, lastPage - startPage + 1);
@@ -124,22 +175,7 @@
     }
     const frac = Math.min(1, fetchedCount / assigned);
     elBar.style.width = `${Math.round(frac * 100)}%`;
-    if (finished && !cancelled) {
-      ui.style.background = "linear-gradient(135deg, #0f7a3a 0%, #19a34a 100%)";
-      ui.style.boxShadow = "0 8px 24px rgba(25,163,74,0.35)";
-      elBar.style.background = "#d7ffe3";
-      elStatus.textContent = 'Completed';
-    } else if (cancelled) {
-      ui.style.background = "rgba(0,0,0,0.8)";
-      ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
-      elBar.style.background = "#ff7675";
-      elStatus.textContent = 'Cancelled';
-    } else {
-      ui.style.background = "rgba(0,0,0,0.8)";
-      ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
-      elBar.style.background = "#2ecc71";
-      elStatus.textContent = 'Running';
-    }
+    elStatus.textContent = 'Processing';
   }
 
   updateUI();
@@ -189,20 +225,18 @@
   }
 
   // start detection and update UI
-  elStatus.textContent = 'Probing...';
   let detectedLast = null;
   try {
     detectedLast = await findLastPage(startPage);
   } catch (e) {
     detectedLast = null;
   }
+  probingComplete = true;
   if (detectedLast === null || detectedLast < startPage) {
-    elLast.textContent = '-';
+    lastPage = null;
   } else {
-    elLast.textContent = String(detectedLast);
+    lastPage = detectedLast;
   }
-  // expose lastPage for workers; if unknown, keep null to let workers detect via invalid fetch
-  lastPage = (detectedLast >= startPage) ? detectedLast : null;
   updateUI();
   // --- end detection ---
 
