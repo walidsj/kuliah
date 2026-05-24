@@ -38,7 +38,7 @@
   window.addEventListener("beforeunload", download.cancel, { once: true });
   window.addEventListener("pagehide", download.cancel, { once: true });
 
-  const lastPage = await detectLastPage(settings.startPage, download.signal);
+  const lastPage = await detectLastPage(settings.startPage, download.signal, ui);
   ui.setProbingComplete(lastPage);
 
   const pages = await fetchPagesToPdf({
@@ -321,7 +321,15 @@
         elements.statusIcon.className = "text-blue-200";
         panel.querySelector("#rmv-processing-details").classList.add("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
-        elements.status.textContent = "Memuat..."; 
+        elements.status.textContent = "Memuat...";
+      },
+      setProbingProgress(probedPages) {
+        panel.dataset.mode = "probing";
+        elements.statusIcon.innerHTML = getUiIcon("loading");
+        elements.statusIcon.className = "text-blue-200";
+        panel.querySelector("#rmv-processing-details").classList.add("hidden");
+        panel.querySelector("#rmv-complete-details").classList.add("hidden");
+        elements.status.textContent = `Mendeteksi ${probedPages} halaman...`;
       },
       setProcessing(progress, fetchedPages, lastKnownPage) {
         panel.dataset.mode = "processing";
@@ -366,15 +374,23 @@
     return ui;
   }
 
-  async function detectLastPage(startPage, signal) {
-    if (!(await probePage(startPage, signal))) {
+  async function detectLastPage(startPage, signal, ui) {
+    let probedPages = 0;
+
+    const probe = async (pageNumber) => {
+      probedPages += 1;
+      ui?.setProbingProgress?.(probedPages);
+      return probePage(pageNumber, signal);
+    };
+
+    if (!(await probe(startPage))) {
       return startPage - 1;
     }
 
     let lower = startPage;
     let upper = startPage + 1;
 
-    while (await probePage(upper, signal)) {
+    while (await probe(upper)) {
       lower = upper;
       upper *= 2;
 
@@ -386,7 +402,7 @@
 
     while (lower + 1 < upper) {
       const middle = Math.floor((lower + upper) / 2);
-      if (await probePage(middle, signal)) {
+      if (await probe(middle)) {
         lower = middle;
       } else {
         upper = middle;
