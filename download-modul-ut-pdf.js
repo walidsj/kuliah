@@ -89,7 +89,6 @@
   ui.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <strong id="rmv-status">Starting...</strong>
-      <button id="rmv-cancel" style="background:#c0392b;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer">Cancel</button>
     </div>
     <div style="margin-bottom:6px;">Fetched: <span id="rmv-fetched">0</span></div>
     <div style="margin-bottom:6px;">Last page: <span id="rmv-last">-</span></div>
@@ -102,12 +101,6 @@
   const elFetched = ui.querySelector('#rmv-fetched');
   const elLast = ui.querySelector('#rmv-last');
   const elBar = ui.querySelector('#rmv-bar');
-  const btnCancel = ui.querySelector('#rmv-cancel');
-
-  btnCancel.addEventListener('click', () => {
-    cancelDownload();
-    elStatus.textContent = 'Cancelling...';
-  });
 
   let fetchedCount = 0;
   // known last page (null = unknown)
@@ -130,7 +123,22 @@
     }
     const frac = Math.min(1, fetchedCount / assigned);
     elBar.style.width = `${Math.round(frac * 100)}%`;
-    elStatus.textContent = cancelled ? 'Cancelled' : (finished ? 'Completed' : 'Running');
+    if (finished && !cancelled) {
+      ui.style.background = "linear-gradient(135deg, #0f7a3a 0%, #19a34a 100%)";
+      ui.style.boxShadow = "0 8px 24px rgba(25,163,74,0.35)";
+      elBar.style.background = "#d7ffe3";
+      elStatus.textContent = 'Completed';
+    } else if (cancelled) {
+      ui.style.background = "rgba(0,0,0,0.8)";
+      ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+      elBar.style.background = "#ff7675";
+      elStatus.textContent = 'Cancelled';
+    } else {
+      ui.style.background = "rgba(0,0,0,0.8)";
+      ui.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+      elBar.style.background = "#2ecc71";
+      elStatus.textContent = 'Running';
+    }
   }
 
   updateUI();
@@ -259,7 +267,6 @@
   // mark finished and update UI
   finished = true;
   updateUI();
-  btnCancel.disabled = true;
 
   if (cancelled || abortController.signal.aborted) {
     alert("PDF tidak disimpan karena proses dibatalkan.");
