@@ -99,46 +99,46 @@
   function askForDownloadSettings(root, defaults) {
     return new Promise((resolve, reject) => {
       const overlay = document.createElement("div");
-      overlay.className = "fixed inset-0 z-[1000000] flex items-end justify-center bg-black/70 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-4";
+      overlay.className = "fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-70 px-3 py-3 sm:items-center sm:px-4 sm:py-4";
 
       const modal = document.createElement("div");
-      modal.className = "w-full max-w-xl max-h-[calc(100vh-1.5rem)] overflow-auto rounded-3xl border border-white/10 bg-slate-950 text-white shadow-2xl shadow-black/40 ring-1 ring-white/5 sm:max-h-[calc(100vh-2rem)]";
+      modal.className = "w-full max-w-xl max-h-screen overflow-auto rounded-2xl border border-gray-700 bg-gray-900 text-white shadow-2xl ring-1 ring-white ring-opacity-5 sm:max-h-screen";
       modal.innerHTML = `
-        <div class="border-b border-white/10 px-5 py-5 sm:px-6">
+        <div class="border-b border-gray-700 px-5 py-5 sm:px-6">
           <div class="flex items-start gap-3">
-            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-400/20">${getUiIcon("settings")}</div>
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500 bg-opacity-10 text-blue-200 ring-1 ring-blue-400 ring-opacity-20">${getUiIcon("settings")}</div>
             <div class="min-w-0">
               <div class="text-lg font-bold tracking-tight sm:text-xl">Pengaturan unduhan</div>
-              <div class="mt-1 text-sm leading-6 text-slate-300">Isi nama file, halaman awal, dan jumlah worker sebelum proses dimulai.</div>
+              <div class="mt-1 text-sm leading-6 text-gray-300">Isi nama file, halaman awal, dan jumlah worker sebelum proses dimulai.</div>
             </div>
           </div>
         </div>
         <form id="rmv-settings-form" class="grid gap-4 px-5 py-5 sm:px-6">
-          <label class="grid gap-2 text-sm font-medium text-slate-200">
+          <label class="grid gap-2 text-sm font-medium text-gray-200">
             <span>Nama file PDF</span>
-            <input class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="pdfFileName" type="text" value="${escapeHtml(defaults.defaultFileName)}" autocomplete="off" />
+            <input class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="pdfFileName" type="text" value="${escapeHtml(defaults.defaultFileName)}" autocomplete="off" />
           </label>
           <div class="grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-2 text-sm font-medium text-slate-200">
+            <label class="grid gap-2 text-sm font-medium text-gray-200">
               <span>Halaman awal</span>
-              <input class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="startPage" type="number" min="1" value="${defaults.defaultStartPage}" />
+              <input class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="startPage" type="number" min="1" value="${defaults.defaultStartPage}" />
             </label>
-            <label class="grid gap-2 text-sm font-medium text-slate-200">
+            <label class="grid gap-2 text-sm font-medium text-gray-200">
               <span>Worker</span>
-              <input class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" />
+              <input class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="concurrency" type="number" min="1" max="50" value="${defaults.defaultConcurrency}" />
             </label>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-2 text-sm font-medium text-slate-200">
+            <label class="grid gap-2 text-sm font-medium text-gray-200">
               <span>Orientasi</span>
-              <select class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="orientation">
+              <select class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="orientation">
                 <option value="portrait" ${defaults.defaultOrientation === "portrait" ? "selected" : ""}>Portrait</option>
                 <option value="landscape" ${defaults.defaultOrientation === "landscape" ? "selected" : ""}>Landscape</option>
               </select>
             </label>
-            <label class="grid gap-2 text-sm font-medium text-slate-200">
+            <label class="grid gap-2 text-sm font-medium text-gray-200">
               <span>Ukuran kertas</span>
-              <select class="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/15" name="paperSize">
+              <select class="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-base text-white outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-400 focus:ring-opacity-20" name="paperSize">
                 <option value="a4" ${defaults.defaultPaperSize === "a4" ? "selected" : ""}>A4</option>
                 <option value="letter" ${defaults.defaultPaperSize === "letter" ? "selected" : ""}>Letter</option>
                 <option value="legal" ${defaults.defaultPaperSize === "legal" ? "selected" : ""}>Legal</option>
@@ -147,8 +147,8 @@
             </label>
           </div>
           <div class="mt-1 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" id="rmv-settings-cancel" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/5 active:scale-[0.99]">${getUiIcon("x")}<span>Batal</span></button>
-            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-3 text-sm font-extrabold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 active:scale-[0.99]">${getUiIcon("play")}<span>Mulai</span></button>
+            <button type="button" id="rmv-settings-cancel" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-700 bg-transparent px-4 py-3 text-sm font-semibold text-white transition hover:bg-white hover:bg-opacity-5">${getUiIcon("x")}<span>Batal</span></button>
+            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-green-500 px-4 py-3 text-sm font-extrabold text-gray-900 shadow-lg transition hover:brightness-110">${getUiIcon("play")}<span>Mulai</span></button>
           </div>
         </form>
       `;
@@ -270,24 +270,24 @@
   function createStatusPanel(root, concurrency) {
     const panel = document.createElement("div");
     panel.id = "rmv-download-console";
-    panel.className = "fixed right-3 top-3 z-[999999] w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-white/10 bg-slate-950/90 p-3 font-sans text-sm leading-5 text-white shadow-2xl shadow-black/30 backdrop-blur-sm max-[480px]:left-3 max-[480px]:right-3 max-[480px]:top-3 max-[480px]:w-auto";
+    panel.className = "fixed left-3 right-3 top-3 z-50 w-auto rounded-2xl border border-gray-700 bg-gray-900 bg-opacity-90 p-3 font-sans text-sm leading-5 text-white shadow-2xl sm:left-auto sm:right-3 sm:w-80";
     panel.dataset.mode = "probing";
     panel.innerHTML = `
       <div class="mb-3 flex items-start justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
-          <span id="rmv-status-icon" class="text-cyan-300">${getUiIcon("loading")}</span>
+          <span id="rmv-status-icon" class="text-blue-200">${getUiIcon("loading")}</span>
           <strong id="rmv-status" class="rmv-status-line truncate text-sm font-semibold">Memuat...</strong>
         </div>
         <span id="rmv-spinner" class="rmv-spinner mt-0.5 inline-block h-3.5 w-3.5 min-w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
       </div>
       <div id="rmv-processing-details" class="hidden">
-        <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-slate-300"><span>Diproses</span><span id="rmv-fetched" class="font-semibold text-white">0</span></div>
-        <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-slate-300"><span>Halaman terakhir</span><span id="rmv-last" class="font-semibold text-white">-</span></div>
-        <div class="mb-1.5 h-2 overflow-hidden rounded-full bg-white/10"><div id="rmv-bar" class="h-full w-0 rounded-full bg-cyan-400 transition-[width] duration-200"></div></div>
-        <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400"><span>Worker</span><span id="rmv-workers" class="font-semibold text-slate-200">${concurrency}</span></div>
+        <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-gray-300"><span>Diproses</span><span id="rmv-fetched" class="font-semibold text-white">0</span></div>
+        <div class="mb-1.5 flex items-center justify-between gap-2 text-xs text-gray-300"><span>Halaman terakhir</span><span id="rmv-last" class="font-semibold text-white">-</span></div>
+        <div class="mb-1.5 h-2 overflow-hidden rounded-full bg-white bg-opacity-10"><div id="rmv-bar" class="h-full w-0 rounded-full bg-blue-400 transition-all duration-200"></div></div>
+        <div class="flex items-center justify-between gap-2 text-xs text-gray-400"><span>Worker</span><span id="rmv-workers" class="font-semibold text-gray-200">${concurrency}</span></div>
       </div>
       <div id="rmv-complete-details" class="hidden text-base font-bold tracking-tight">
-        <div class="flex items-center gap-2 text-emerald-50">
+        <div class="flex items-center gap-2 text-green-100">
           <span>${getUiIcon("check")}</span>
           <span>Total halaman: <span id="rmv-pages-done">0</span></span>
         </div>
@@ -309,7 +309,7 @@
       setProbing() {
         panel.dataset.mode = "probing";
         elements.statusIcon.innerHTML = getUiIcon("loading");
-        elements.statusIcon.className = "text-cyan-300";
+        elements.statusIcon.className = "text-blue-200";
         panel.querySelector("#rmv-processing-details").classList.add("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
         elements.status.textContent = "Memuat...";
@@ -318,7 +318,7 @@
       setProcessing(progress, fetchedPages, lastKnownPage) {
         panel.dataset.mode = "processing";
         elements.statusIcon.innerHTML = getUiIcon("loading");
-        elements.statusIcon.className = "text-cyan-300";
+        elements.statusIcon.className = "text-blue-200";
         elements.status.textContent = "Memproses";
         panel.querySelector("#rmv-processing-details").classList.remove("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
@@ -330,7 +330,7 @@
       setProbingComplete(lastKnownPage) {
         panel.dataset.mode = "processing";
         elements.statusIcon.innerHTML = getUiIcon("loading");
-        elements.statusIcon.className = "text-cyan-300";
+        elements.statusIcon.className = "text-blue-200";
         elements.status.textContent = "Memproses";
         panel.querySelector("#rmv-processing-details").classList.remove("hidden");
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
@@ -343,7 +343,7 @@
         panel.querySelector("#rmv-complete-details").classList.add("hidden");
         elements.spinner.classList.add("hidden");
         elements.statusIcon.innerHTML = getUiIcon("x");
-        elements.statusIcon.className = "text-rose-300";
+        elements.statusIcon.className = "text-red-300";
         elements.status.textContent = "Dibatalkan";
       },
       setDone(totalPages) {
@@ -352,7 +352,7 @@
         panel.querySelector("#rmv-complete-details").classList.remove("hidden");
         elements.spinner.classList.add("hidden");
         elements.statusIcon.innerHTML = getUiIcon("check");
-        elements.statusIcon.className = "text-emerald-200";
+        elements.statusIcon.className = "text-green-200";
         elements.status.textContent = "Selesai";
         elements.pagesDone.textContent = String(totalPages);
       },
