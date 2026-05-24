@@ -61,6 +61,17 @@
   console.log(`Start download from page ${startPage} with concurrency=${CONCURRENCY}`);
 
   // --- Floating console UI ---
+  // Ensure document.body exists before creating/appending the UI
+  if (!document.body) {
+    await new Promise((resolve) => {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", resolve, { once: true });
+      } else {
+        resolve();
+      }
+    });
+  }
+
   const ui = document.createElement("div");
   ui.id = "rmv-download-console";
   ui.style.position = "fixed";
