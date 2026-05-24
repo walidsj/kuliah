@@ -57,7 +57,7 @@
 
           i++;
 
-          const delay = Math.random() * 500 + 500; // delay antara 500ms hingga 1000ms
+          const delay = Math.random() * 100 + 500; // delay antara 500ms hingga 600ms
           setTimeout(downloadNext, delay);
         };
 
