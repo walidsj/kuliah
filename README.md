@@ -29,5 +29,7 @@ await import(
 ### Purge Cache Jsdelivr
 
 Purge cache:
+
 ``` https://purge.jsdelivr.net/gh/walidsj/kuliah@main/download-modul-ut.js ```
+
 ``` https://purge.jsdelivr.net/gh/walidsj/kuliah@main/download-modul-ut-pdf.js ```
