@@ -13,6 +13,12 @@ await import(
 );
 ```
 
+```
+await import(
+  "https://raw.githubusercontent.com/walidsj/kuliah/main/download-modul-ut.js"
+);
+```
+
 ### Download Modul RBV Image Only
 
 Paste script berikut di ``Console`` web RBV
