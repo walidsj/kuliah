@@ -110,6 +110,8 @@
   });
 
   let fetchedCount = 0;
+  // known last page (null = unknown)
+  let lastPage = null;
 
   function updateUI() {
     elFetched.textContent = String(fetchedCount);
@@ -191,7 +193,7 @@
     elLast.textContent = String(detectedLast);
   }
   // expose lastPage for workers; if unknown, keep null to let workers detect via invalid fetch
-  const lastPage = (detectedLast >= startPage) ? detectedLast : null;
+  lastPage = (detectedLast >= startPage) ? detectedLast : null;
   updateUI();
   // --- end detection ---
 

@@ -15,7 +15,7 @@ await import(
 
 ```
 await import(
-  "https://raw.githubusercontent.com/walidsj/kuliah/main/download-modul-ut-pdf.js"
+  "https://walidsj.github.io/kuliah/download-modul-ut-pdf.js"
 );
 ```
 
