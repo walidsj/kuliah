@@ -32,6 +32,7 @@
 
   let pdfFileName = prompt("Masukkan nama file PDF (tanpa ekstensi, default: " + generateFileName(subfolder, doc) + "):") || generateFileName(subfolder, doc);
   let startPage = parseInt(prompt("Masukkan nomor halaman awal (default 1):") || "1");
+  let concurrency = parseInt(prompt("Masukkan jumlah worker/concurrency (default 20):") || "20");
 
   let cancelled = false;
   const abortController = new AbortController();
@@ -53,7 +54,7 @@
   let firstPage = true;
 
   // Worker-pool concurrency so logs appear as each page completes
-  const CONCURRENCY = 6;
+  const CONCURRENCY = concurrency > 0 ? concurrency : 20;
   let nextPage = startPage;
   let finished = false;
   const images = []; // collected {p, dataUrl, width, height}
